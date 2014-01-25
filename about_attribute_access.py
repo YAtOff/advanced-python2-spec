@@ -4,6 +4,10 @@ from expecter import expect
 def when_not_found(f):
     return f
 
+def rule_number(n):
+    def wrapper(f):
+        return f
+    return wrapper
 
 """
 First, what's descriptor?
@@ -39,6 +43,7 @@ class describe_accessing_attribure_bar_of_object_foo:
 
     pass
 
+    @rule_number(1)
     def it_first_gives_the_result_of__get__method_of_data_descriptor(self):
 
         class Foo(object):
@@ -54,6 +59,7 @@ class describe_accessing_attribure_bar_of_object_foo:
 
 
     @when_not_found
+    @rule_number(2)
     def it_tries_the_instance__dict__(self):
 
         class Foo(object):
@@ -67,6 +73,7 @@ class describe_accessing_attribure_bar_of_object_foo:
 
 
     @when_not_found
+    @rule_number(3)
     def it_tries_the__get__method_of_non_data_descriptor(self):
 
         class FooBase(object):
@@ -80,6 +87,7 @@ class describe_accessing_attribure_bar_of_object_foo:
 
 
     @when_not_found
+    @rule_number(4)
     def it_tries_the_class__dict__(self):
 
         class FooBase(object):
@@ -93,6 +101,7 @@ class describe_accessing_attribure_bar_of_object_foo:
 
 
     @when_not_found
+    @rule_number(5)
     def it_tries_each_type_in_the_mro_until_it_finds_a_match(self):
 
         class FooBase(object):
@@ -107,6 +116,7 @@ class describe_accessing_attribure_bar_of_object_foo:
 
 class describe_assigning_to_attribute_bar_of_object_foo:
 
+    @rule_number(1)
     def it_creates_entyr_in_instance__dict__(self):
 
         class Foo(object): pass
@@ -116,6 +126,7 @@ class describe_assigning_to_attribute_bar_of_object_foo:
 
         expect(foo.__dict__["bar"]) == "must go in instance __dict__"
 
+    @rule_number(2)
     def it_unless_there_is_data_descripor_with__set__method(self):
 
         class Foo(object):
