@@ -1,53 +1,30 @@
 """
-A metaclass is any callable that takes paremeters for:
-    - the class name
-    - the class's bases
-    - the class's attribures
+Here is an example that demonstrates how metaclasses and descriptors
+could make code more readable and flexible.
+Using metaclasses and descriptors we can define a `Struct` class, that
+represents a structure in the C programming language. We can use it
+as a normal object in Python, and when needed we can pack it to a binary
+representation, that could be read in a C program.
 
-`type` is the default metaclass.
-
-Metaclasses create classes.
-Classes create objects.
-Classes are objects.
-=> Metaclasses are classes' classes.
-
-Everything is an object in Python, and they are all either instances of
-classes or instances of metaclasses.
-
-Except for `type`.
-
-`type` is actually its own metaclass. This is not something you could
-reproduce in pure Python, and is done by cheating a little bit at the
-implementation level.
-
-
->>> class String(Struct):
+>>> class Message(Struct):
 ...
 ...     data = StringField(10)
 ...     length = IntField()
 
 
->>> s = String(data='helloworld', length=3)
->>> s.schema
+>>> m = Message(data='helloworld', length=3)
+>>> m.schema
 [('data', 'char[]'), ('length', 'int')]
->>> repr(s.packed)
+>>> repr(m.packed)
 "'helloworld\\\\x03\\\\x00\\\\x00\\\\x00'"
->>> s.data = 'hello'
->>> s.length = 5
->>> repr(s.packed)
+>>> m.data = 'hello'
+>>> m.length = 5
+>>> repr(m.packed)
 "'hello\\\\x00\\\\x00\\\\x00\\\\x00\\\\x00\\\\x05\\\\x00\\\\x00\\\\x00'"
->>> s2 = String(data="foobar", length=6)
->>> repr(s2.packed)
+>>> m2 = Message(data="foobar", length=6)
+>>> repr(m2.packed)
 "'foobar\\\\x00\\\\x00\\\\x00\\\\x00\\\\x06\\\\x00\\\\x00\\\\x00'"
 
-Before considering to use metaclasses read that:
-
-        Metaclasses are deeper magic than 99% of users should ever worry
-        about. If you wonder whether you need them, you don't (the people
-        who actually need them know with certainty that they need them,
-        and don't need an explanation about why).
-
-        Python Guru Tim Peters
 """
 
 import struct
@@ -144,6 +121,15 @@ class StringField(Field):
 class StructMetaclass(type):
 
     def __new__(metaclass, classname, bases, class_dict):
+        # __new__ is the method called before __init__
+        # it's the method that creates the object and returns it
+        # while __init__ just initializes the object passed as parameter
+        # you rarely use __new__, except when you want to control how the
+        # object is created.
+        # here the created object is the class, and we want to customize it
+        # so we override __new__
+        # you can do some stuff in __init__ too if you wish
+
         cls = type.__new__(metaclass, classname, bases, class_dict)
         fields = sorted(
             inspect.getmembers(cls, lambda o: isinstance(o, Field)),
