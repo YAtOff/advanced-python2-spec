@@ -1,0 +1,2 @@
+__slots__
+class decorators vs metaclasses
