@@ -20,7 +20,7 @@ First, what's descriptor?
 
 
 After we know about descriptors, let's define the rules for attribute access
-in seven simple rules.
+in eitht simple rules.
 """
 
 
@@ -112,6 +112,20 @@ class describe_accessing_attribure_bar_of_object_foo:
 
         foo = Foo()
         expect(foo.bar) == "from base class"
+
+    @when_not_found
+    @rule_number(6)
+    def it_calls__getattr__(self):
+
+        class Foo(object):
+            def __getattr__(self, name):
+                if name == "bar":
+                    return "from __getattr__"
+                else:
+                    raise AttributeError
+
+        foo = Foo()
+        expect(foo.bar) == "from __getattr__"
 
 
 class describe_assigning_to_attribute_bar_of_object_foo:
