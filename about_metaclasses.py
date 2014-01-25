@@ -20,132 +20,25 @@ Except for `type`.
 reproduce in pure Python, and is done by cheating a little bit at the
 implementation level.
 
->>> import struct
->>> import inspect
->>> from collections import OrderedDict
-
-
->>> class ValidationError(Exception): pass
-
-
->>> class Field(object):
-...
-...     _creation_counter = 0
-...
-...     def __init__(self):
-...         self.creation_order = Field._creation_counter
-...         Field._creation_counter += 1
-...
-...     @property
-...     def value(self):
-...         return self._value
-...
-...     @value.setter
-...     def value(self, v):
-...         self.validate(v)
-...         self._value = v
-...
-...     @property
-...     def packed(self):
-...         return struct.pack(self.format, self._value)
-...
-...     def validate(self, v):
-...         if not isinstance(v, self.type):
-...             raise ValidationError()
-
-
->>> class IntField(Field):
-...
-...     format = 'i'
-...     type = int
-...     ctype = 'int'
-
-
->>> class LongField(Field):
-...
-...    format = 'l'
-...    type = int
-...    ctype = 'long'
-
-
->>> class DoubleField(Field):
-...
-...    format = 'd'
-...    type = float
-...    ctype = 'double'
-
-
->>> class BoolField(Field):
-...
-...     format = '?'
-...     type = bool
-...     ctype = '_Bool'
-
-
->>> class CharField(Field):
-...
-...     format = 'c'
-...     ctype = 'char'
-...
-...     def validate(self, v):
-...         if not isinstance(v, str) or len(v) != 1:
-...             raise ValidationError()
-
->>> class StringField(Field):
-...
-...     type = str
-...     ctype = 'char[]'
-...
-...     @property
-...     def format(self):
-...         return '{}s'.format(len(self.value))
-
-
->>> class StructMetaclass(type):
-...
-...     def __new__(metaclass, classname, bases, class_dict):
-...         cls = type.__new__(metaclass, classname, bases, class_dict)
-...         cls._fields = OrderedDict(sorted(
-...             inspect.getmembers(cls, lambda o: isinstance(o, Field)),
-...             key=lambda i: i[1].creation_order
-...         ))
-...         return cls
-
-
->>> class Struct(object):
-...
-...     __metaclass__ = StructMetaclass
-...
-...
-...     def __init__(self, **kwargs):
-...         for k, v in kwargs.iteritems():
-...             if k in self._fields:
-...                 self._fields[k].value = v
-...
-...     @property
-...     def packed(self):
-...         return ''.join((f.packed for f in self._fields.itervalues()))
-...
-...     @property
-...     def schema(self):
-...         return [(n, f.ctype) for n, f in self._fields.iteritems()]
-
 
 >>> class String(Struct):
 ...
-...     data = StringField()
+...     data = StringField(10)
 ...     length = IntField()
 
 
->>> s = String(data='abc', length=3)
+>>> s = String(data='helloworld', length=3)
 >>> s.schema
 [('data', 'char[]'), ('length', 'int')]
 >>> repr(s.packed)
-"'abc\\\\x03\\\\x00\\\\x00\\\\x00'"
->>> s.data.value = 'hello'
->>> s.length.value = 5
+"'helloworld\\\\x03\\\\x00\\\\x00\\\\x00'"
+>>> s.data = 'hello'
+>>> s.length = 5
 >>> repr(s.packed)
-"'hello\\\\x05\\\\x00\\\\x00\\\\x00'"
+"'hello\\\\x00\\\\x00\\\\x00\\\\x00\\\\x00\\\\x05\\\\x00\\\\x00\\\\x00'"
+>>> s2 = String(data="foobar", length=6)
+>>> repr(s2.packed)
+"'foobar\\\\x00\\\\x00\\\\x00\\\\x00\\\\x06\\\\x00\\\\x00\\\\x00'"
 
 Before considering to use metaclasses read that:
 
@@ -156,3 +49,126 @@ Before considering to use metaclasses read that:
 
         Python Guru Tim Peters
 """
+
+import struct
+import inspect
+
+
+class ValidationError(Exception): pass
+
+
+class Field(object):
+
+    _creation_counter = 0
+
+    def __init__(self):
+        self.creation_order = Field._creation_counter
+        Field._creation_counter += 1
+
+    def __get__(self, obj, type=None):
+        if obj is None:
+            return self
+        return obj.__dict__[self.name]
+
+    def __set__(self, obj, value):
+        self.validate(value)
+        obj.__dict__[self.name] = value
+
+    def pack(self, value):
+        return struct.pack(self.format, value)
+
+    def validate(self, value):
+        if not isinstance(value, self.type):
+            raise ValidationError()
+
+
+class IntField(Field):
+
+    format = 'i'
+    type = int
+    ctype = 'int'
+
+
+class LongField(Field):
+
+   format = 'l'
+   type = int
+   ctype = 'long'
+
+
+class DoubleField(Field):
+
+   format = 'd'
+   type = float
+   ctype = 'double'
+
+
+class BoolField(Field):
+
+    format = '?'
+    type = bool
+    ctype = '_Bool'
+
+
+class CharField(Field):
+
+    type = str
+    format = 'c'
+    ctype = 'char'
+
+    def validate(self, value):
+        super(CharField, self).validate(value)
+        if len(value) != 1:
+            raise ValidationError()
+
+
+class StringField(Field):
+
+    type = str
+    ctype = 'char[]'
+
+    def __init__(self, max_length):
+        super(StringField, self).__init__()
+        self._max_length = max_length
+
+    def validate(self, value):
+        super(StringField, self).validate(value)
+        if self._max_length < len(value):
+            raise ValidationError()
+
+    @property
+    def format(self):
+        return '{}s'.format(self._max_length)
+
+
+class StructMetaclass(type):
+
+    def __new__(metaclass, classname, bases, class_dict):
+        cls = type.__new__(metaclass, classname, bases, class_dict)
+        fields = sorted(
+            inspect.getmembers(cls, lambda o: isinstance(o, Field)),
+            key=lambda i: i[1].creation_order
+        )
+        for f in fields:
+            f[1].name = f[0]
+        cls._fields = [f[0] for f in fields]
+        return cls
+
+
+class Struct(object):
+
+    __metaclass__ = StructMetaclass
+
+
+    def __init__(self, **kwargs):
+        for k, v in kwargs.iteritems():
+            setattr(self, k ,v)
+
+    @property
+    def packed(self):
+        return ''.join(
+            (getattr(type(self), f).pack(getattr(self, f)) for f in self._fields))
+
+    @property
+    def schema(self):
+        return [(f, getattr(type(self), f).ctype) for f in self._fields]
