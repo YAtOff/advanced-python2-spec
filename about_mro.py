@@ -35,6 +35,7 @@ Whats is the MRO of clase `A`?
 But where that comes from?
 MRO is calculated with the C3 algorithm.
 To understand the C3 algotithm, we will implement it in Python.
+The algorithm is ispired from: http://www.python.org/download/releases/2.3/mro/
 """
 
 O = object
