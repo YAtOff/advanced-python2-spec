@@ -151,3 +151,55 @@ class describe_assigning_to_attribute_bar_of_object_foo:
 
         expect(foo.__dict__).does_not_contain("bar")
         expect(foo.bar) == "from data descriptor"
+
+
+class describe___slots__:
+
+    """
+    By default, instances of both old and new-style classes have a dictionary
+    for attribute storage. This wastes space for objects having very few
+    instance variables. The space consumption can become acute when creating
+    large numbers of instances.
+    The default can be overridden by defining __slots__ in a new-style class
+    definition. The __slots__ declaration takes a sequence of instance
+    variables and reserves just enough space in each instance to hold a value
+    for each variable. Space is saved because __dict__ is not created for each
+    instance.
+    """
+
+    def it_allows_only_attributes_listed_in__slots__to_be_assigned(self):
+
+        class Eggs(object):
+            __slots__ = ["spam"]
+
+        eggs = Eggs()
+        eggs.spam = True
+        with expect.raises(AttributeError):
+            eggs.bacon = True
+
+    def it_doesnt_work_when_inheriting_from_class_without__slots__(self):
+
+        class Breakfast(object): pass
+
+        class Eggs(Breakfast):
+            __slots__ = ["spam"]
+
+        eggs = Eggs()
+        eggs.spam = True
+        eggs.bacon = True
+
+    def it_works_for_subclasses_only_if_redefined(self):
+
+        class Breakfast(object):
+            __slots__ = ["bread"]
+
+        class Eggs(Breakfast):
+            __slots__ = ["spam"]
+
+        eggs = Eggs()
+        eggs.spam = True
+
+        class Bacon(Breakfast): pass
+
+        bacon = Bacon()
+        bacon.eggs = True
