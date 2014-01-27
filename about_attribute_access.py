@@ -41,8 +41,6 @@ class BarDataDescriptor(object):
 
 class describe_accessing_attribure_bar_of_object_foo:
 
-    pass
-
     @rule_number(1)
     def it_first_gives_the_result_of__get__method_of_data_descriptor(self):
 
